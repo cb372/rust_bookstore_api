@@ -1,15 +1,20 @@
 use crate::models::{Book, NewBook};
 use std::error::Error;
+use std::future::Future;
 
 pub trait BookRepo<E: Error> {
-    async fn list_books(&self) -> Result<Vec<Book>, E>;
+    fn list_books(&self) -> impl Future<Output = Result<Vec<Book>, E>> + Send;
 
-    async fn get_book(&self, id: i32) -> Result<Option<Book>, E>;
+    fn get_book(&self, id: i32) -> impl Future<Output = Result<Option<Book>, E>> + Send;
 
-    async fn insert_book(&self, new_book: NewBook) -> Result<Book, E>;
+    fn insert_book(&self, new_book: NewBook) -> impl Future<Output = Result<Book, E>> + Send;
 
-    async fn update_book(&self, id: i32, new_book: NewBook) -> Result<Option<Book>, E>;
+    fn update_book(
+        &self,
+        id: i32,
+        new_book: NewBook,
+    ) -> impl Future<Output = Result<Option<Book>, E>> + Send;
 
     /// Returns true if the book existed and was deleted, false otherwise
-    async fn delete_book(&self, id: i32) -> Result<bool, E>;
+    fn delete_book(&self, id: i32) -> impl Future<Output = Result<bool, E>> + Send;
 }
