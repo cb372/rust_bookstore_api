@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 
 use crate::models::{Book, NewBook};
-use crate::repo::{BookRepo, BookRepoError};
+use crate::repo::BookRepo;
 use crate::schema::books;
 use bb8::Pool;
 use diesel::{OptionalExtension, QueryDsl, SelectableHelper};
@@ -28,17 +28,15 @@ pub enum DatabaseError {
     ResultError(diesel::result::Error),
 }
 
-impl From<bb8::RunError<diesel_async::pooled_connection::PoolError>>
-    for BookRepoError<DatabaseError>
-{
+impl From<bb8::RunError<diesel_async::pooled_connection::PoolError>> for DatabaseError {
     fn from(error: bb8::RunError<diesel_async::pooled_connection::PoolError>) -> Self {
-        BookRepoError::new(DatabaseError::PoolError(error))
+        DatabaseError::PoolError(error)
     }
 }
 
-impl From<diesel::result::Error> for BookRepoError<DatabaseError> {
+impl From<diesel::result::Error> for DatabaseError {
     fn from(error: diesel::result::Error) -> Self {
-        BookRepoError::new(DatabaseError::ResultError(error))
+        DatabaseError::ResultError(error)
     }
 }
 
@@ -76,7 +74,7 @@ impl DatabaseBookRepo {
 }
 
 impl BookRepo<DatabaseError> for DatabaseBookRepo {
-    async fn list_books(&self) -> Result<Vec<Book>, BookRepoError<DatabaseError>> {
+    async fn list_books(&self) -> Result<Vec<Book>, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let books = books::table
@@ -88,7 +86,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(books)
     }
 
-    async fn get_book(&self, id: i32) -> Result<Option<Book>, BookRepoError<DatabaseError>> {
+    async fn get_book(&self, id: i32) -> Result<Option<Book>, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let maybe_book = books::table
@@ -101,7 +99,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(maybe_book)
     }
 
-    async fn insert_book(&self, new_book: NewBook) -> Result<Book, BookRepoError<DatabaseError>> {
+    async fn insert_book(&self, new_book: NewBook) -> Result<Book, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let inserted_book = diesel::insert_into(books::table)
@@ -117,7 +115,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         &self,
         id: i32,
         new_book: NewBook,
-    ) -> Result<Option<Book>, BookRepoError<DatabaseError>> {
+    ) -> Result<Option<Book>, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let updated_book = diesel::update(books::table.find(id))
@@ -130,7 +128,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(updated_book)
     }
 
-    async fn delete_book(&self, id: i32) -> Result<bool, BookRepoError<DatabaseError>> {
+    async fn delete_book(&self, id: i32) -> Result<bool, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let deleted = diesel::delete(books::table.find(id))
