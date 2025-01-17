@@ -17,6 +17,11 @@ use std::error::Error;
 use tokio::net::TcpListener;
 use tracing::info;
 
+#[derive(Clone)]
+struct AppState<R> {
+    repo: R,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -29,7 +34,7 @@ async fn main() {
             "/books/{id}",
             get(get_book).put(update_book).delete(delete_book),
         )
-        .with_state(repo);
+        .with_state(AppState { repo });
 
     let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
     let local_addr = listener.local_addr().unwrap();
@@ -40,24 +45,32 @@ async fn main() {
 
 // TODO I want the repo to be abstract `impl BookRepo<E>`, but I couldn't get it to compile
 
-async fn list_books(
-    State(repo): State<DatabaseBookRepo>,
-) -> Result<Json<Vec<Book>>, (StatusCode, String)> {
+async fn list_books<E, R>(
+    State(state): State<AppState<R>>,
+) -> Result<Json<Vec<Book>>, (StatusCode, String)>
+where
+    E: Error,
+    R: BookRepo<E>,
+{
     // TODO pagination
-    let results = repo.list_books().await.map_err(internal_error)?;
+    let results = state.repo.list_books().await.map_err(internal_error)?;
 
     info!("Retrieved {} books from the DB", results.len());
 
     Ok(Json(results))
 }
 
-async fn get_book(
-    State(repo): State<DatabaseBookRepo>,
+async fn get_book<E, R>(
+    State(state): State<AppState<R>>,
     Path(id): Path<String>,
-) -> Result<Json<Book>, (StatusCode, String)> {
+) -> Result<Json<Book>, (StatusCode, String)>
+where
+    E: Error,
+    R: BookRepo<E>,
+{
     let id = parse_book_id(id)?;
 
-    let book = repo.get_book(id).await.map_err(internal_error)?;
+    let book = state.repo.get_book(id).await.map_err(internal_error)?;
 
     match book {
         Some(book) => {
@@ -74,25 +87,38 @@ async fn get_book(
     }
 }
 
-async fn insert_book(
-    State(repo): State<DatabaseBookRepo>,
+async fn insert_book<E, R>(
+    State(state): State<AppState<R>>,
     Json(new_book): Json<NewBook>,
-) -> Result<Json<Book>, (StatusCode, String)> {
-    let inserted_book = repo.insert_book(new_book).await.map_err(internal_error)?;
+) -> Result<Json<Book>, (StatusCode, String)>
+where
+    E: Error,
+    R: BookRepo<E>,
+{
+    let inserted_book = state
+        .repo
+        .insert_book(new_book)
+        .await
+        .map_err(internal_error)?;
 
     info!("Inserted book into the DB: {:?}", inserted_book);
 
     Ok(Json(inserted_book))
 }
 
-async fn update_book(
-    State(repo): State<DatabaseBookRepo>,
+async fn update_book<E, R>(
+    State(state): State<AppState<R>>,
     Path(id): Path<String>,
     Json(new_book): Json<NewBook>,
-) -> Result<Json<Book>, (StatusCode, String)> {
+) -> Result<Json<Book>, (StatusCode, String)>
+where
+    E: Error,
+    R: BookRepo<E>,
+{
     let id = parse_book_id(id)?;
 
-    let updated_book = repo
+    let updated_book = state
+        .repo
         .update_book(id, new_book)
         .await
         .map_err(internal_error)?;
@@ -112,8 +138,12 @@ async fn update_book(
     }
 }
 
-async fn delete_book(State(repo): State<DatabaseBookRepo>, Path(id): Path<String>) -> Response {
-    let deleted_or_error = try_to_delete_book(repo, id.clone()).await;
+async fn delete_book<E, R>(State(state): State<AppState<R>>, Path(id): Path<String>) -> Response
+where
+    E: Error,
+    R: BookRepo<E>,
+{
+    let deleted_or_error = try_to_delete_book(state.repo, id.clone()).await;
 
     match deleted_or_error {
         Ok(true) => {
@@ -143,7 +173,7 @@ async fn try_to_delete_book<E: Error>(
 /// Build a 500 response for an error
 fn internal_error<E>(err: E) -> (StatusCode, String)
 where
-    E: std::error::Error,
+    E: Error,
 {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }

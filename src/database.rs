@@ -111,11 +111,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(inserted_book)
     }
 
-    async fn update_book(
-        &self,
-        id: i32,
-        new_book: NewBook,
-    ) -> Result<Option<Book>, DatabaseError> {
+    async fn update_book(&self, id: i32, new_book: NewBook) -> Result<Option<Book>, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let updated_book = diesel::update(books::table.find(id))
