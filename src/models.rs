@@ -6,7 +6,7 @@ use crate::schema::books;
 pub struct Book {
     id: i32,
     name: String,
-    author: String
+    author: String,
 }
 
 // TODO could build this using a macro, as it is just Book minus the ID field
@@ -14,5 +14,5 @@ pub struct Book {
 #[diesel(table_name = books)]
 pub struct NewBook {
     name: String,
-    author: String
+    author: String,
 }
