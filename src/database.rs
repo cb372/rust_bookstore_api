@@ -99,7 +99,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(maybe_book)
     }
 
-    async fn insert_book(&self, new_book: NewBook) -> Result<Book, DatabaseError> {
+    async fn insert_book(&mut self, new_book: NewBook) -> Result<Book, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let inserted_book = diesel::insert_into(books::table)
@@ -111,7 +111,11 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(inserted_book)
     }
 
-    async fn update_book(&self, id: i32, new_book: NewBook) -> Result<Option<Book>, DatabaseError> {
+    async fn update_book(
+        &mut self,
+        id: i32,
+        new_book: NewBook,
+    ) -> Result<Option<Book>, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let updated_book = diesel::update(books::table.find(id))
@@ -124,7 +128,7 @@ impl BookRepo<DatabaseError> for DatabaseBookRepo {
         Ok(updated_book)
     }
 
-    async fn delete_book(&self, id: i32) -> Result<bool, DatabaseError> {
+    async fn delete_book(&mut self, id: i32) -> Result<bool, DatabaseError> {
         let mut conn = self.pool.get().await?;
 
         let deleted = diesel::delete(books::table.find(id))
