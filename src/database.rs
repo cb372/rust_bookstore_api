@@ -12,10 +12,9 @@ use diesel_async::{
 
 pub type DBPool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
-pub async fn create_db_pool() -> DBPool {
-    let db_url =
-        std::env::var("DATABASE_URL").unwrap_or("postgres://localhost/bookstore".to_string());
-    let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url);
+pub async fn create_db_pool(connection_string: String) -> DBPool {
+    let config =
+        AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(connection_string);
     Pool::builder()
         .build(config)
         .await
@@ -43,11 +42,11 @@ impl From<diesel::result::Error> for DatabaseError {
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DatabaseError::PoolError(_) => {
-                write!(f, "problem getting a connection from the connection pool")
+            DatabaseError::PoolError(e) => {
+                write!(f, "problem getting a connection from the connection pool: {e}")
             }
-            DatabaseError::ResultError(_) => {
-                write!(f, "problem executing a statement against the DB")
+            DatabaseError::ResultError(e) => {
+                write!(f, "problem executing a statement against the DB: {e}")
             }
         }
     }
