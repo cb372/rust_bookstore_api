@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dotenvy = "0.15"
 axum = { version = "0.8", features = ["macros"] }
 bb8 = "0.8"
 diesel = { version = "2", features = ["postgres"] }
